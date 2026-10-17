@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <LoveVersion>11.5</LoveVersion>
+    <LoveSha256>BA6E56BE2685E53C817749C4A5007F51137136FE5A3AB64920508BABC2E74369</LoveSha256>
+    <LuaLsVersion>3.19.2</LuaLsVersion>
+    <LuaLsSha256>4A3DC851B3B31E7B75A23F645D1BA4A2137579A55F5FA4EDBB17A3E2A6254044</LuaLsSha256>
+    <LoveApiCommit>c630dd883cda128a19d850bd5e3911110b271609</LoveApiCommit>
+    <LoveApiSha256>0240417FACDBC29AD4FAE77E204005E414A6F244FADD183822C1B24FAC20AD5D</LoveApiSha256>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Scintilla5.NET" Version="7.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+
+  <Target Name="KeepX64ScintillaOnly" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <Content Remove="@(Content)" Condition="$([System.String]::Copy('%(Content.Link)').StartsWith('runtimes\')) And !$([System.String]::Copy('%(Content.Link)').StartsWith('runtimes\win-x64\'))" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="DropDuplicateScintillaCopies" AfterTargets="ResolvePackageAssets">
+    <ItemGroup>
+      <NativeCopyLocalItems Remove="@(NativeCopyLocalItems)" Condition="'%(Filename)' == 'Scintilla' Or '%(Filename)' == 'Lexilla'" />
+      <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)" Condition="'%(Filename)' == 'Scintilla' Or '%(Filename)' == 'Lexilla'" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="BundleLove" AfterTargets="Build">
+    <PropertyGroup>
+      <LoveName>love-$(LoveVersion)-win64</LoveName>
+      <LoveCache>$(BaseIntermediateOutputPath)love\</LoveCache>
+    </PropertyGroup>
+    <DownloadFile SourceUrl="https://github.com/love2d/love/releases/download/$(LoveVersion)/$(LoveName).zip" DestinationFolder="$(LoveCache)" Condition="!Exists('$(LoveCache)$(LoveName).zip')" />
+    <VerifyFileHash File="$(LoveCache)$(LoveName).zip" Hash="$(LoveSha256)" />
+    <Unzip SourceFiles="$(LoveCache)$(LoveName).zip" DestinationFolder="$(LoveCache)" Condition="!Exists('$(LoveCache)$(LoveName)\lovec.exe')" />
+    <ItemGroup>
+      <LoveFiles Include="$(LoveCache)$(LoveName)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(LoveFiles)" DestinationFolder="$(OutDir)love\%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="BundleLuaLs" AfterTargets="Build">
+    <PropertyGroup>
+      <LuaLsName>lua-language-server-$(LuaLsVersion)-win32-x64</LuaLsName>
+      <LuaLsCache>$(BaseIntermediateOutputPath)luals\</LuaLsCache>
+      <LoveApiName>love2d-$(LoveApiCommit)</LoveApiName>
+    </PropertyGroup>
+    <DownloadFile SourceUrl="https://github.com/LuaLS/lua-language-server/releases/download/$(LuaLsVersion)/$(LuaLsName).zip" DestinationFolder="$(LuaLsCache)" Condition="!Exists('$(LuaLsCache)$(LuaLsName).zip')" />
+    <VerifyFileHash File="$(LuaLsCache)$(LuaLsName).zip" Hash="$(LuaLsSha256)" />
+    <Unzip SourceFiles="$(LuaLsCache)$(LuaLsName).zip" DestinationFolder="$(LuaLsCache)$(LuaLsName)" Condition="!Exists('$(LuaLsCache)$(LuaLsName)\bin\lua-language-server.exe')" />
+    <DownloadFile SourceUrl="https://github.com/LuaCATS/love2d/archive/$(LoveApiCommit).zip" DestinationFolder="$(LuaLsCache)" DestinationFileName="$(LoveApiName).zip" Condition="!Exists('$(LuaLsCache)$(LoveApiName).zip')" />
+    <VerifyFileHash File="$(LuaLsCache)$(LoveApiName).zip" Hash="$(LoveApiSha256)" />
+    <Unzip SourceFiles="$(LuaLsCache)$(LoveApiName).zip" DestinationFolder="$(LuaLsCache)" Condition="!Exists('$(LuaLsCache)$(LoveApiName)\library\love.lua')" />
+    <ItemGroup>
+      <LuaLsFiles Include="$(LuaLsCache)$(LuaLsName)\**\*" Exclude="$(LuaLsCache)$(LuaLsName)\meta\3rd\**" />
+      <LoveApiFiles Include="$(LuaLsCache)$(LoveApiName)\library\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(LuaLsFiles)" DestinationFolder="$(OutDir)lua-language-server\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(LoveApiFiles)" DestinationFolder="$(OutDir)lua-language-server\love2d\%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>
